@@ -1,24 +1,22 @@
-
 var playerRed="R";
 var playerBrown="B";
-
 var currPlayer=playerBrown;
 var gameOver=false;
 var board;
-
 var rows=6;
 var columns=7;
-
 var currColumns;
+const dropSound = new Audio('../assets/tile-drop.mp3');
 
 window.onload=function(){
     setGame();
+    playBGM();
 }
 
 function setGame(){
     board=[];
-    
     currColumns=[5,5,5,5,5,5,5];
+    
     for(let r=0;r<rows;r++){
         let row=[];
         for(let c=0;c<columns;c++){
@@ -40,6 +38,8 @@ function setPiece(){
     if(gameOver){
         return;
     }
+
+    dropSound.play();
 
     let coords=this.id.split("-");
     let r=parseInt(coords[0]);
@@ -82,7 +82,7 @@ function checkWinner(){
     for(let c=0;c<columns;c++)
         for(let r=0;r<rows-3;r++)
             if(board[r][c]!=' ')
-                if(board[r][c]==board[r+1][c] && board[r+1][c]==board[r+2][c] && board[r+2][c]==board[r+2][c]){
+                if(board[r][c]==board[r+1][c] && board[r+1][c]==board[r+2][c] && board[r+2][c]==board[r+3][c]){
                     setWinner(r,c);
                     return;
                 }
@@ -117,5 +117,19 @@ function setWinner(r,c){
         winner.innerText="Ash Wins!";
 
     gameOver=true;
+    
+    // Stop BGM
+    if (typeof bgmAudio !== 'undefined') {
+        bgmAudio.pause();
+        bgmAudio.currentTime = 0;
+    }
 
+    // Play game over sound
+    const gameOverSound = new Audio("../assets/game-over.mp3");
+    gameOverSound.play();
+
+    // Reload when sound ends
+    gameOverSound.onended = () => {
+        window.location.reload();
+    };
 }
