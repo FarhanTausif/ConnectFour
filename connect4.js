@@ -113,8 +113,10 @@ function setWinner(r,c){
 
     if(board[r][c]==playerRed)
         winner.innerText="Maroon Wins!";
-    else
+    else if (board[r][c]==playerBrown)
         winner.innerText="Ash Wins!";
+    else 
+        winner.innerText="Draw!";
 
     gameOver=true;
     
