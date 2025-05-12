@@ -28,7 +28,7 @@ body{
     margin: 5px;
     background-color: white;
     border-radius: 50%;
-    border: 4px solid #555;
+    border: 4px solid #302626;
     transition: transform .5s ease-in;
 }
 
@@ -47,9 +47,9 @@ body{
 }
 
 .red-piece {
-    background-color: #B00020;
+    background-color: #751934;
 }
 
 .brown-piece {
-    background-color: #5C4033;
+    background-color:  #635d5d;;
 }
