@@ -1,0 +1,389 @@
+var playerRed = "R";
+var playerBrown = "B";
+var currPlayer = playerBrown;
+var gameOver = false;
+var board;
+var rows = 6;
+var columns = 7;
+var currColumns;
+var gameMode = "human"; // Default to human vs human
+const dropSound = new Audio('../assets/tile-drop.mp3');
+
+window.onload = function() {
+    
+    setupModeSelection();
+    setGame();
+    playBGM();
+}
+
+function setupModeSelection() {
+   
+    let modeDiv = document.createElement("div");
+    modeDiv.id = "mode-selection";
+    modeDiv.style.textAlign = "center";
+    modeDiv.style.marginBottom = "10px";
+    
+    let humanBtn = document.createElement("button");
+    humanBtn.innerText = "Human vs Human";
+    humanBtn.style.marginRight = "10px";
+    humanBtn.addEventListener("click", () => {
+        gameMode = "human";
+        resetGame();
+    });
+    
+    let aiBtn = document.createElement("button");
+    aiBtn.innerText = "Human vs AI";
+    aiBtn.addEventListener("click", () => {
+        gameMode = "ai";
+        resetGame();
+        if (!gameOver && currPlayer === playerBrown) {
+            aiMove();
+        }
+    });
+    
+    modeDiv.appendChild(humanBtn);
+    modeDiv.appendChild(aiBtn);
+    let boardDiv = document.getElementById("board");
+    if (boardDiv) {
+        boardDiv.parentNode.insertBefore(modeDiv, boardDiv);
+    } else {
+        console.error("Board element not found, appending mode selection to body...");
+        document.body.appendChild(modeDiv);
+    }
+}
+
+function resetGame() {
+    console.log("Resetting game...");
+    let boardDiv = document.getElementById("board");
+    if (boardDiv) {
+        boardDiv.innerHTML = "";
+    } else {
+        console.error("Board element not found during reset!");
+    }
+    document.getElementById("winner").innerText = "";
+    gameOver = false;
+    currPlayer = playerBrown;
+    setGame();
+}
+
+function setGame() {
+    board = [];
+    currColumns = [5, 5, 5, 5, 5, 5, 5];
+    
+    for (let r = 0; r < rows; r++) {
+        let row = [];
+        for (let c = 0; c < columns; c++) {
+            row.push(' ');
+            let tile = document.createElement("div");
+            tile.id = r.toString() + "-" + c.toString();
+            tile.classList.add("tile");
+            tile.addEventListener("click", setPiece);
+            let boardDiv = document.getElementById("board");
+            if (!boardDiv) {
+                console.error("Board element not found!");
+                return;
+            }
+            boardDiv.append(tile); 
+        }
+        board.push(row);
+    }
+}
+
+function setPiece() {
+    if (gameOver) return;
+
+    dropSound.play();
+
+    let coords = this.id.split("-");
+    let r = parseInt(coords[0]);
+    let c = parseInt(coords[1]);
+
+    r = currColumns[c];
+    if (r < 0) return;
+
+    board[r][c] = currPlayer;
+    let tile = document.getElementById(r.toString() + "-" + c.toString());
+    if (currPlayer == playerRed) {
+        tile.classList.add("red-piece");
+        currPlayer = playerBrown;
+    } else {
+        tile.classList.add("brown-piece");
+        currPlayer = playerRed;
+    }
+    r--;
+    currColumns[c] = r;
+
+    checkWinner();
+
+    if (!gameOver && gameMode === "ai" && currPlayer === playerBrown) {
+        setTimeout(() => {
+            aiMove();
+        }, 500);
+    }
+}
+
+function aiMove() {
+    if (gameOver) return;
+
+    let bestScore = -Infinity;
+    let bestCol = -1;
+    let depth = 6;
+
+    for (let c = 0; c < columns; c++) {
+        if (currColumns[c] >= 0) {
+            let r = currColumns[c];
+            board[r][c] = playerBrown;
+            currColumns[c]--;
+            let score = minimax(depth - 1, -Infinity, Infinity, false);
+            board[r][c] = ' ';
+            currColumns[c]++;
+            if (score > bestScore) {
+                bestScore = score;
+                bestCol = c;
+            }
+        }
+    }
+
+    if (bestCol !== -1) {
+        let r = currColumns[bestCol];
+        board[r][bestCol] = playerBrown;
+        let tile = document.getElementById(r.toString() + "-" + bestCol.toString());
+        tile.classList.add("brown-piece");
+        dropSound.play();
+        currColumns[bestCol]--;
+        currPlayer = playerRed;
+        checkWinner();
+    }
+}
+
+function minimax(depth, alpha, beta, isMaximizing) {
+    let result = checkWinnerForMinimax();
+    if (result !== null) {
+        if (result === playerBrown) return 1000;
+        if (result === playerRed) return -1000;
+        return 0; // Draw
+    }
+    if (depth === 0) {
+        return evaluateBoard();
+    }
+
+    if (isMaximizing) {
+        let maxEval = -Infinity;
+        for (let c = 0; c < columns; c++) {
+            if (currColumns[c] >= 0) {
+                let r = currColumns[c];
+                board[r][c] = playerBrown;
+                currColumns[c]--;
+                let eval = minimax(depth - 1, alpha, beta, false);
+                board[r][c] = ' ';
+                currColumns[c]++;
+                maxEval = Math.max(maxEval, eval);
+                alpha = Math.max(alpha, eval);
+                if (beta <= alpha) break;
+            }
+        }
+        return maxEval;
+    } else {
+        let minEval = Infinity;
+        for (let c = 0; c < columns; c++) {
+            if (currColumns[c] >= 0) {
+                let r = currColumns[c];
+                board[r][c] = playerRed;
+                currColumns[c]--;
+                let eval = minimax(depth - 1, alpha, beta, true);
+                board[r][c] = ' ';
+                currColumns[c]++;
+                minEval = Math.min(minEval, eval);
+                beta = Math.min(beta, eval);
+                if (beta <= alpha) break;
+            }
+        }
+        return minEval;
+    }
+}
+
+function evaluateBoard() {
+    let score = 0;
+
+    function evaluateWindow(window) {
+        let brownCount = window.filter(cell => cell === playerBrown).length;
+        let redCount = window.filter(cell => cell === playerRed).length;
+        let emptyCount = window.filter(cell => cell === ' ').length;
+
+        if (brownCount === 4) return 100;
+        if (brownCount === 3 && emptyCount === 1) return 50;
+        if (brownCount === 2 && emptyCount === 2) return 10;
+        if (redCount === 4) return -100;
+        if (redCount === 3 && emptyCount === 1) return -80;
+        return 0;
+    }
+
+    // Horizontal
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < columns - 3; c++) {
+            let window = [board[r][c], board[r][c+1], board[r][c+2], board[r][c+3]];
+            score += evaluateWindow(window);
+        }
+    }
+
+    // Vertical
+    for (let c = 0; c < columns; c++) {
+        for (let r = 0; r < rows - 3; r++) {
+            let window = [board[r][c], board[r+1][c], board[r+2][c], board[r+3][c]];
+            score += evaluateWindow(window);
+        }
+    }
+
+    // Diagonal
+    for (let r = 0; r < rows - 3; r++) {
+        for (let c = 0; c < columns - 3; c++) {
+            let window = [board[r][c], board[r+1][c+1], board[r+2][c+2], board[r+3][c+3]];
+            score += evaluateWindow(window);
+        }
+    }
+
+    // Anti-diagonal 
+    for (let r = 3; r < rows; r++) {
+        for (let c = 0; c < columns - 3; c++) {
+            let window = [board[r][c], board[r-1][c+1], board[r-2][c+2], board[r-3][c+3]];
+            score += evaluateWindow(window);
+        }
+    }
+
+    return score;
+}
+
+function checkWinner() {
+   
+    // Horizontal
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < columns - 3; c++) {
+            if (board[r][c] != ' ') {
+                if (board[r][c] == board[r][c+1] && board[r][c+1] == board[r][c+2] && board[r][c+2] == board[r][c+3]) {
+                    setWinner(r, c);
+                    return;
+                }
+            }
+        }
+    }
+
+    // Vertical
+    for (let c = 0; c < columns; c++) {
+        for (let r = 0; r < rows - 3; r++) {
+            if (board[r][c] != ' ') {
+                if (board[r][c] == board[r+1][c] && board[r+1][c] == board[r+2][c] && board[r+2][c] == board[r+3][c]) {
+                    setWinner(r, c);
+                    return;
+                }
+            }
+        }
+    }
+
+    // Diagonal (bottom-left to top-right)
+    for (let r = 0; r < rows - 3; r++) {
+        for (let c = 0; c < columns - 3; c++) {
+            if (board[r][c] != ' ') {
+                if (board[r][c] == board[r+1][c+1] && board[r+1][c+1] == board[r+2][c+2] && board[r+2][c+2] == board[r+3][c+3]) {
+                    setWinner(r, c);
+                    return;
+                }
+            }
+        }
+    }
+
+    // Anti-diagonal (top-left to bottom-right)
+    for (let r = 3; r < rows; r++) {
+        for (let c = 0; c < columns - 3; c++) {
+            if (board[r][c] != ' ') {
+                if (board[r][c] == board[r-1][c+1] && board[r-1][c+1] == board[r-2][c+2] && board[r-2][c+2] == board[r-3][c+3]) {
+                    setWinner(r, c);
+                    return;
+                }
+            }
+        }
+    }
+
+    // Check for draw
+    if (currColumns.every(col => col < 0)) {
+        setWinner(0, 0);
+    }
+}
+
+function checkWinnerForMinimax() {
+    // Horizontal
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < columns - 3; c++) {
+            if (board[r][c] != ' ') {
+                if (board[r][c] == board[r][c+1] && board[r][c+1] == board[r][c+2] && board[r][c+2] == board[r][c+3]) {
+                    return board[r][c];
+                }
+            }
+        }
+    }
+
+    // Vertical
+    for (let c = 0; c < columns; c++) {
+        for (let r = 0; r < rows - 3; r++) {
+            if (board[r][c] != ' ') {
+                if (board[r][c] == board[r+1][c] && board[r+1][c] == board[r+2][c] && board[r+2][c] == board[r+3][c]) {
+                    return board[r][c];
+                }
+            }
+        }
+    }
+
+    // Diagonal
+    for (let r = 0; r < rows - 3; r++) {
+        for (let c = 0; c < columns - 3; c++) {
+            if (board[r][c] != ' ') {
+                if (board[r][c] == board[r+1][c+1] && board[r+1][c+1] == board[r+2][c+2] && board[r+2][c+2] == board[r+3][c+3]) {
+                    return board[r][c];
+                }
+            }
+        }
+    }
+
+    // Anti-diagonal
+    for (let r = 3; r < rows; r++) {
+        for (let c = 0; c < columns - 3; c++) {
+            if (board[r][c] != ' ') {
+                if (board[r][c] == board[r-1][c+1] && board[r-1][c+1] == board[r-2][c+2] && board[r-2][c+2] == board[r-3][c+3]) {
+                    return board[r][c];
+                }
+            }
+        }
+    }
+
+    // Draw
+    if (currColumns.every(col => col < 0)) {
+        return 'draw';
+    }
+
+    return null;
+}
+
+function setWinner(r, c) {
+    let winner = document.getElementById("winner");
+
+    if (board[r][c] == playerRed) 
+        winner.innerText = "Maroon Wins!";
+    else if (board[r][c] == playerBrown) 
+        winner.innerText = "Ash Wins!";
+    else
+        winner.innerText = "Draw!";
+    
+
+    gameOver = true;
+    
+    if (typeof bgmAudio !== 'undefined') {
+        bgmAudio.pause();
+        bgmAudio.currentTime = 0;
+    }
+
+    const gameOverSound = new Audio("../assets/game-over.mp3");
+    gameOverSound.play();
+
+    gameOverSound.onended = () => {
+        window.location.reload();
+    };
+}
