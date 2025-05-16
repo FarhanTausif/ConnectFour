@@ -13,6 +13,7 @@ window.onload=function(){
     playBGM();
 }
 
+
 function setGame(){
     board=[];
     currColumns=[5,5,5,5,5,5,5];
