@@ -10,29 +10,35 @@ var gameMode = "human"; // Default to human vs human
 const dropSound = new Audio('../assets/tile-drop.mp3');
 
 window.onload = function() {
-    
     setupModeSelection();
     setGame();
     playBGM();
+
+    const verticalLabel = document.getElementById("vertical-label");
+    if (verticalLabel) {
+        verticalLabel.classList.add("show");
+    }
+
+    updateTurnDisplay(); // Initialize the turn display
 }
 
 function setupModeSelection() {
-   
     let modeDiv = document.createElement("div");
     modeDiv.id = "mode-selection";
     modeDiv.style.textAlign = "center";
     modeDiv.style.marginBottom = "10px";
-    
+
     let humanBtn = document.createElement("button");
     humanBtn.innerText = "Human vs Human";
-    humanBtn.style.marginRight = "10px";
+    humanBtn.classList.add("human-button");
     humanBtn.addEventListener("click", () => {
         gameMode = "human";
         resetGame();
     });
-    
+
     let aiBtn = document.createElement("button");
     aiBtn.innerText = "Human vs AI";
+    aiBtn.classList.add("ai-button");
     aiBtn.addEventListener("click", () => {
         gameMode = "ai";
         resetGame();
@@ -40,7 +46,7 @@ function setupModeSelection() {
             aiMove();
         }
     });
-    
+
     modeDiv.appendChild(humanBtn);
     modeDiv.appendChild(aiBtn);
     let boardDiv = document.getElementById("board");
@@ -89,6 +95,20 @@ function setGame() {
     }
 }
 
+function updateTurnDisplay() {
+    const winnerElement = document.getElementById("winner");
+    if (!winnerElement) {
+        console.error("Winner element not found!");
+        return;
+    }
+
+    if (gameMode === "ai") {
+        winnerElement.innerText = currPlayer === playerBrown ? "AI's Turn" : "Your Turn";
+    } else {
+        winnerElement.innerText = currPlayer === playerBrown ? "Ash's Turn" : "Maroon's Turn";
+    }
+}
+
 function setPiece() {
     if (gameOver) return;
 
@@ -115,9 +135,12 @@ function setPiece() {
 
     checkWinner();
 
+    updateTurnDisplay(); // Update the turn display
+
     if (!gameOver && gameMode === "ai" && currPlayer === playerBrown) {
         setTimeout(() => {
             aiMove();
+            updateTurnDisplay(); // Update the turn display after AI move
         }, 500);
     }
 }
@@ -149,12 +172,12 @@ function aiMove() {
         board[r][bestCol] = playerBrown;
         let tile = document.getElementById(r.toString() + "-" + bestCol.toString());
         tile.classList.add("brown-piece");
-        // Reset the audio and play the drop sound
         dropSound.currentTime = 0;
         dropSound.play();
         currColumns[bestCol]--;
         currPlayer = playerRed;
         checkWinner();
+        updateTurnDisplay(); // Ensure turn display is updated after AI move
     }
 }
 
@@ -365,27 +388,88 @@ function checkWinnerForMinimax() {
 }
 
 function setWinner(r, c) {
-    let winner = document.getElementById("winner");
+    let winnerText = "";
 
-    if (board[r][c] == playerRed) 
-        winner.innerText = "Maroon Wins!";
-    else if (board[r][c] == playerBrown) 
-        winner.innerText = "Ash Wins!";
-    else
-        winner.innerText = "Draw!";
-    
+    // Check for draw condition
+    if (currColumns.every(col => col < 0)) {
+        winnerText = "It's a Draw!";
+    } else if (gameMode === "ai" && board[r][c] == playerBrown) {
+        winnerText = "AI Wins!";
+    } else if (board[r][c] == playerRed) {
+        winnerText = "Maroon Wins!";
+    } else if (board[r][c] == playerBrown) {
+        winnerText = "Ash Wins!";
+    }
 
     gameOver = true;
-    
+
+    // Pause background music if playing
     if (typeof bgmAudio !== 'undefined') {
         bgmAudio.pause();
         bgmAudio.currentTime = 0;
     }
 
+    // Play game-over sound
     const gameOverSound = new Audio("../assets/game-over.mp3");
     gameOverSound.play();
 
-    gameOverSound.onended = () => {
+    // Show game-over pop-up
+    showGameOverPopup(winnerText);
+}
+
+// Function to display the game-over pop-up
+function showGameOverPopup(winnerText) {
+    // Create overlay
+    const overlay = document.createElement("div");
+    overlay.id = "game-over-overlay";
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+    overlay.style.display = "flex";
+    overlay.style.flexDirection = "column";
+    overlay.style.justifyContent = "center";
+    overlay.style.alignItems = "center";
+    overlay.style.zIndex = "1000";
+
+    // Create game-over text
+    const gameOverText = document.createElement("h1");
+    gameOverText.innerText = "Game Over!";
+    gameOverText.style.color = "#ffffff";
+    gameOverText.style.fontSize = "3rem";
+    gameOverText.style.marginBottom = "20px";
+
+    // Create winner text
+    const winnerMessage = document.createElement("p");
+    winnerMessage.innerText = winnerText;
+    winnerMessage.style.color = "#ffcc00";
+    winnerMessage.style.fontSize = "1.5rem";
+    winnerMessage.style.marginBottom = "30px";
+
+    // Create play-again button
+    const playAgainButton = document.createElement("button");
+    playAgainButton.innerHTML = `<i class="fas fa-redo"></i> Play Again`;
+    playAgainButton.style.background = "linear-gradient(145deg, #00f3ff, #0066ff)";
+    playAgainButton.style.color = "#ffffff";
+    playAgainButton.style.border = "none";
+    playAgainButton.style.borderRadius = "25px";
+    playAgainButton.style.padding = "15px 30px";
+    playAgainButton.style.fontSize = "1.2rem";
+    playAgainButton.style.cursor = "pointer";
+    playAgainButton.style.boxShadow = "0 4px 15px rgba(0, 243, 255, 0.3)";
+    playAgainButton.style.transition = "all 0.3s ease";
+
+    playAgainButton.addEventListener("click", () => {
         window.location.reload();
-    };
+    });
+
+    // Append elements to overlay
+    overlay.appendChild(gameOverText);
+    overlay.appendChild(winnerMessage);
+    overlay.appendChild(playAgainButton);
+
+    // Append overlay to body
+    document.body.appendChild(overlay);
 }
