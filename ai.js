@@ -149,6 +149,8 @@ function aiMove() {
         board[r][bestCol] = playerBrown;
         let tile = document.getElementById(r.toString() + "-" + bestCol.toString());
         tile.classList.add("brown-piece");
+        // Reset the audio and play the drop sound
+        dropSound.currentTime = 0;
         dropSound.play();
         currColumns[bestCol]--;
         currPlayer = playerRed;
