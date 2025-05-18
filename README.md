@@ -23,7 +23,7 @@ A browser-based **Connect Four** game built with **JavaScript**, featuring both 
 
 ### ▶️ Play Now
 
-Simply open the `index.html` file in your browser:
+Simply open the `connect4.html` file in your browser:
 
 ```bash
 # Open in your browser
