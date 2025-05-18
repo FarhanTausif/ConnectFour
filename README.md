@@ -1,4 +1,4 @@
-# 🔴🟡 Connect Four Game
+# 🔴Connect Four Game🟡
 
 A browser-based **Connect Four** game built with **JavaScript**, featuring both **Human vs Human** and **Human vs AI** modes. Drop your discs, connect four, and enjoy classic strategy fun—right in your browser!
 
