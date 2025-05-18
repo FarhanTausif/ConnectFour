@@ -135,8 +135,8 @@ function setPiece() {
 
     checkWinner();
 
-    updateTurnDisplay(); // Update the turn display
-
+    updateTurnDisplay(); 
+    
     if (!gameOver && gameMode === "ai" && currPlayer === playerBrown) {
         setTimeout(() => {
             aiMove();
