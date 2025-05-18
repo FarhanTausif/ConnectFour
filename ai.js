@@ -7,6 +7,7 @@ var rows = 6;
 var columns = 7;
 var currColumns;
 var gameMode = "human"; // Default to human vs human
+var aiDifficulty = "medium"; // Default difficulty
 const dropSound = new Audio('../assets/tile-drop.mp3');
 
 window.onload = function() {
@@ -40,11 +41,7 @@ function setupModeSelection() {
     aiBtn.innerText = "Human vs AI";
     aiBtn.classList.add("ai-button");
     aiBtn.addEventListener("click", () => {
-        gameMode = "ai";
-        resetGame();
-        if (!gameOver && currPlayer === playerBrown) {
-            aiMove();
-        }
+        showDifficultyPopup();
     });
 
     modeDiv.appendChild(humanBtn);
@@ -58,6 +55,82 @@ function setupModeSelection() {
     }
 }
 
+function showDifficultyPopup() {
+    // Create overlay
+    const overlay = document.createElement("div");
+    overlay.id = "difficulty-overlay";
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+    overlay.style.display = "flex";
+    overlay.style.flexDirection = "column";
+    overlay.style.justifyContent = "center";
+    overlay.style.alignItems = "center";
+    overlay.style.zIndex = "1000";
+
+    // Create title
+    const title = document.createElement("h2");
+    title.innerText = "Select AI Difficulty";
+    title.style.color = "#ffffff";
+    title.style.marginBottom = "20px";
+    overlay.appendChild(title);
+
+    // Difficulty buttons
+    const difficulties = [
+        { label: "Easy", value: "easy" },
+        { label: "Medium", value: "medium" },
+        { label: "Hard", value: "hard" }
+    ];
+    const btnContainer = document.createElement("div");
+    btnContainer.style.display = "flex";
+    btnContainer.style.gap = "20px";
+    difficulties.forEach(diff => {
+        const btn = document.createElement("button");
+        btn.innerText = diff.label;
+        btn.style.background = "linear-gradient(145deg, #00f3ff, #0066ff)";
+        btn.style.color = "#fff";
+        btn.style.border = "none";
+        btn.style.borderRadius = "25px";
+        btn.style.padding = "15px 30px";
+        btn.style.fontSize = "1.2rem";
+        btn.style.cursor = "pointer";
+        btn.style.boxShadow = "0 4px 15px rgba(0, 243, 255, 0.3)";
+        btn.style.transition = "all 0.3s ease";
+        btn.addEventListener("click", () => {
+            aiDifficulty = diff.value;
+            document.body.removeChild(overlay);
+            gameMode = "ai";
+            resetGame();
+            if (!gameOver && currPlayer === playerBrown) {
+                aiMove();
+            }
+        });
+        btnContainer.appendChild(btn);
+    });
+    overlay.appendChild(btnContainer);
+
+    // Optionally, add a cancel button
+    const cancelBtn = document.createElement("button");
+    cancelBtn.innerText = "Cancel";
+    cancelBtn.style.marginTop = "30px";
+    cancelBtn.style.background = "#444";
+    cancelBtn.style.color = "#fff";
+    cancelBtn.style.border = "none";
+    cancelBtn.style.borderRadius = "25px";
+    cancelBtn.style.padding = "10px 25px";
+    cancelBtn.style.fontSize = "1rem";
+    cancelBtn.style.cursor = "pointer";
+    cancelBtn.addEventListener("click", () => {
+        document.body.removeChild(overlay);
+    });
+    overlay.appendChild(cancelBtn);
+
+    document.body.appendChild(overlay);
+}
+
 function resetGame() {
     console.log("Resetting game...");
     let boardDiv = document.getElementById("board");
@@ -68,8 +141,18 @@ function resetGame() {
     }
     document.getElementById("winner").innerText = "";
     gameOver = false;
-    currPlayer = playerBrown;
+    // Randomize first player in AI mode
+    if (gameMode === "ai") {
+        currPlayer = Math.random() < 0.5 ? playerRed : playerBrown;
+    } else {
+        currPlayer = playerBrown;
+    }
     setGame();
+    updateTurnDisplay(); // Ensure the turn display is correct after setting up the game
+    // If AI goes first, make its move
+    if (gameMode === "ai" && currPlayer === playerBrown && !gameOver) {
+        aiMove();
+    }
 }
 
 function setGame() {
@@ -150,7 +233,41 @@ function aiMove() {
 
     let bestScore = -Infinity;
     let bestCol = -1;
-    let depth = 6;
+    let depth;
+    // Set depth based on difficulty
+    if (aiDifficulty === "easy") {
+        depth = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
+    } else if (aiDifficulty === "medium") {
+        depth = Math.floor(Math.random() * 2) + 4; // 4 or 5
+    } else { // hard
+        depth = Math.floor(Math.random() * 2) + 6; // 6 or 7
+    }
+
+    // Check for immediate winning move
+    for (let c = 0; c < columns; c++) {
+        if (currColumns[c] >= 0) {
+            let r = currColumns[c];
+            board[r][c] = playerBrown;
+            currColumns[c]--;
+            if (checkWinnerForMinimax() === playerBrown) {
+                // Take the winning move immediately
+                board[r][c] = ' ';
+                currColumns[c]++;
+                let tile = document.getElementById(r.toString() + "-" + c.toString());
+                board[r][c] = playerBrown;
+                tile.classList.add("brown-piece");
+                dropSound.currentTime = 0;
+                dropSound.play();
+                currColumns[c]--;
+                currPlayer = playerRed;
+                checkWinner();
+                updateTurnDisplay();
+                return;
+            }
+            board[r][c] = ' ';
+            currColumns[c]++;
+        }
+    }
 
     for (let c = 0; c < columns; c++) {
         if (currColumns[c] >= 0) {
