@@ -7,40 +7,43 @@ var rows = 6;
 var columns = 7;
 var currColumns;
 var gameMode = "human"; // Default to human vs human
+var aiDifficulty = "medium"; // Default difficulty
 const dropSound = new Audio('../assets/tile-drop.mp3');
 
 window.onload = function() {
-    
     setupModeSelection();
     setGame();
     playBGM();
+
+    const verticalLabel = document.getElementById("vertical-label");
+    if (verticalLabel) {
+        verticalLabel.classList.add("show");
+    }
+
+    updateTurnDisplay(); // Initialize the turn display
 }
 
 function setupModeSelection() {
-   
     let modeDiv = document.createElement("div");
     modeDiv.id = "mode-selection";
     modeDiv.style.textAlign = "center";
     modeDiv.style.marginBottom = "10px";
-    
+
     let humanBtn = document.createElement("button");
     humanBtn.innerText = "Human vs Human";
-    humanBtn.style.marginRight = "10px";
+    humanBtn.classList.add("human-button");
     humanBtn.addEventListener("click", () => {
         gameMode = "human";
         resetGame();
     });
-    
+
     let aiBtn = document.createElement("button");
     aiBtn.innerText = "Human vs AI";
+    aiBtn.classList.add("ai-button");
     aiBtn.addEventListener("click", () => {
-        gameMode = "ai";
-        resetGame();
-        if (!gameOver && currPlayer === playerBrown) {
-            aiMove();
-        }
+        showDifficultyPopup();
     });
-    
+
     modeDiv.appendChild(humanBtn);
     modeDiv.appendChild(aiBtn);
     let boardDiv = document.getElementById("board");
@@ -50,6 +53,82 @@ function setupModeSelection() {
         console.error("Board element not found, appending mode selection to body...");
         document.body.appendChild(modeDiv);
     }
+}
+
+function showDifficultyPopup() {
+    // Create overlay
+    const overlay = document.createElement("div");
+    overlay.id = "difficulty-overlay";
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+    overlay.style.display = "flex";
+    overlay.style.flexDirection = "column";
+    overlay.style.justifyContent = "center";
+    overlay.style.alignItems = "center";
+    overlay.style.zIndex = "1000";
+
+    // Create title
+    const title = document.createElement("h2");
+    title.innerText = "Select AI Difficulty";
+    title.style.color = "#ffffff";
+    title.style.marginBottom = "20px";
+    overlay.appendChild(title);
+
+    // Difficulty buttons
+    const difficulties = [
+        { label: "Easy", value: "easy" },
+        { label: "Medium", value: "medium" },
+        { label: "Hard", value: "hard" }
+    ];
+    const btnContainer = document.createElement("div");
+    btnContainer.style.display = "flex";
+    btnContainer.style.gap = "20px";
+    difficulties.forEach(diff => {
+        const btn = document.createElement("button");
+        btn.innerText = diff.label;
+        btn.style.background = "linear-gradient(145deg, #00f3ff, #0066ff)";
+        btn.style.color = "#fff";
+        btn.style.border = "none";
+        btn.style.borderRadius = "25px";
+        btn.style.padding = "15px 30px";
+        btn.style.fontSize = "1.2rem";
+        btn.style.cursor = "pointer";
+        btn.style.boxShadow = "0 4px 15px rgba(0, 243, 255, 0.3)";
+        btn.style.transition = "all 0.3s ease";
+        btn.addEventListener("click", () => {
+            aiDifficulty = diff.value;
+            document.body.removeChild(overlay);
+            gameMode = "ai";
+            resetGame();
+            if (!gameOver && currPlayer === playerBrown) {
+                aiMove();
+            }
+        });
+        btnContainer.appendChild(btn);
+    });
+    overlay.appendChild(btnContainer);
+
+    // Optionally, add a cancel button
+    const cancelBtn = document.createElement("button");
+    cancelBtn.innerText = "Cancel";
+    cancelBtn.style.marginTop = "30px";
+    cancelBtn.style.background = "#444";
+    cancelBtn.style.color = "#fff";
+    cancelBtn.style.border = "none";
+    cancelBtn.style.borderRadius = "25px";
+    cancelBtn.style.padding = "10px 25px";
+    cancelBtn.style.fontSize = "1rem";
+    cancelBtn.style.cursor = "pointer";
+    cancelBtn.addEventListener("click", () => {
+        document.body.removeChild(overlay);
+    });
+    overlay.appendChild(cancelBtn);
+
+    document.body.appendChild(overlay);
 }
 
 function resetGame() {
@@ -62,8 +141,18 @@ function resetGame() {
     }
     document.getElementById("winner").innerText = "";
     gameOver = false;
-    currPlayer = playerBrown;
+    // Randomize first player in AI mode
+    if (gameMode === "ai") {
+        currPlayer = Math.random() < 0.5 ? playerRed : playerBrown;
+    } else {
+        currPlayer = playerBrown;
+    }
     setGame();
+    updateTurnDisplay(); // Ensure the turn display is correct after setting up the game
+    // If AI goes first, make its move
+    if (gameMode === "ai" && currPlayer === playerBrown && !gameOver) {
+        aiMove();
+    }
 }
 
 function setGame() {
@@ -86,6 +175,20 @@ function setGame() {
             boardDiv.append(tile); 
         }
         board.push(row);
+    }
+}
+
+function updateTurnDisplay() {
+    const winnerElement = document.getElementById("winner");
+    if (!winnerElement) {
+        console.error("Winner element not found!");
+        return;
+    }
+
+    if (gameMode === "ai") {
+        winnerElement.innerText = currPlayer === playerBrown ? "AI's Turn" : "Your Turn";
+    } else {
+        winnerElement.innerText = currPlayer === playerBrown ? "Ash's Turn" : "Maroon's Turn";
     }
 }
 
@@ -115,9 +218,12 @@ function setPiece() {
 
     checkWinner();
 
+    updateTurnDisplay(); // Update the turn display
+
     if (!gameOver && gameMode === "ai" && currPlayer === playerBrown) {
         setTimeout(() => {
             aiMove();
+            updateTurnDisplay(); // Update the turn display after AI move
         }, 500);
     }
 }
@@ -127,7 +233,41 @@ function aiMove() {
 
     let bestScore = -Infinity;
     let bestCol = -1;
-    let depth = 6;
+    let depth;
+    // Set depth based on difficulty
+    if (aiDifficulty === "easy") {
+        depth = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
+    } else if (aiDifficulty === "medium") {
+        depth = Math.floor(Math.random() * 2) + 4; // 4 or 5
+    } else { // hard
+        depth = Math.floor(Math.random() * 2) + 6; // 6 or 7
+    }
+
+    // Check for immediate winning move
+    for (let c = 0; c < columns; c++) {
+        if (currColumns[c] >= 0) {
+            let r = currColumns[c];
+            board[r][c] = playerBrown;
+            currColumns[c]--;
+            if (checkWinnerForMinimax() === playerBrown) {
+                // Take the winning move immediately
+                board[r][c] = ' ';
+                currColumns[c]++;
+                let tile = document.getElementById(r.toString() + "-" + c.toString());
+                board[r][c] = playerBrown;
+                tile.classList.add("brown-piece");
+                dropSound.currentTime = 0;
+                dropSound.play();
+                currColumns[c]--;
+                currPlayer = playerRed;
+                checkWinner();
+                updateTurnDisplay();
+                return;
+            }
+            board[r][c] = ' ';
+            currColumns[c]++;
+        }
+    }
 
     for (let c = 0; c < columns; c++) {
         if (currColumns[c] >= 0) {
@@ -149,10 +289,12 @@ function aiMove() {
         board[r][bestCol] = playerBrown;
         let tile = document.getElementById(r.toString() + "-" + bestCol.toString());
         tile.classList.add("brown-piece");
+        dropSound.currentTime = 0;
         dropSound.play();
         currColumns[bestCol]--;
         currPlayer = playerRed;
         checkWinner();
+        updateTurnDisplay(); // Ensure turn display is updated after AI move
     }
 }
 
@@ -363,27 +505,88 @@ function checkWinnerForMinimax() {
 }
 
 function setWinner(r, c) {
-    let winner = document.getElementById("winner");
+    let winnerText = "";
 
-    if (board[r][c] == playerRed) 
-        winner.innerText = "Maroon Wins!";
-    else if (board[r][c] == playerBrown) 
-        winner.innerText = "Ash Wins!";
-    else
-        winner.innerText = "Draw!";
-    
+    // Check for draw condition
+    if (currColumns.every(col => col < 0)) {
+        winnerText = "It's a Draw!";
+    } else if (gameMode === "ai" && board[r][c] == playerBrown) {
+        winnerText = "AI Wins!";
+    } else if (board[r][c] == playerRed) {
+        winnerText = "Maroon Wins!";
+    } else if (board[r][c] == playerBrown) {
+        winnerText = "Ash Wins!";
+    }
 
     gameOver = true;
-    
+
+    // Pause background music if playing
     if (typeof bgmAudio !== 'undefined') {
         bgmAudio.pause();
         bgmAudio.currentTime = 0;
     }
 
+    // Play game-over sound
     const gameOverSound = new Audio("../assets/game-over.mp3");
     gameOverSound.play();
 
-    gameOverSound.onended = () => {
+    // Show game-over pop-up
+    showGameOverPopup(winnerText);
+}
+
+// Function to display the game-over pop-up
+function showGameOverPopup(winnerText) {
+    // Create overlay
+    const overlay = document.createElement("div");
+    overlay.id = "game-over-overlay";
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100%";
+    overlay.style.height = "100%";
+    overlay.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+    overlay.style.display = "flex";
+    overlay.style.flexDirection = "column";
+    overlay.style.justifyContent = "center";
+    overlay.style.alignItems = "center";
+    overlay.style.zIndex = "1000";
+
+    // Create game-over text
+    const gameOverText = document.createElement("h1");
+    gameOverText.innerText = "Game Over!";
+    gameOverText.style.color = "#ffffff";
+    gameOverText.style.fontSize = "3rem";
+    gameOverText.style.marginBottom = "20px";
+
+    // Create winner text
+    const winnerMessage = document.createElement("p");
+    winnerMessage.innerText = winnerText;
+    winnerMessage.style.color = "#ffcc00";
+    winnerMessage.style.fontSize = "1.5rem";
+    winnerMessage.style.marginBottom = "30px";
+
+    // Create play-again button
+    const playAgainButton = document.createElement("button");
+    playAgainButton.innerHTML = `<i class="fas fa-redo"></i> Play Again`;
+    playAgainButton.style.background = "linear-gradient(145deg, #00f3ff, #0066ff)";
+    playAgainButton.style.color = "#ffffff";
+    playAgainButton.style.border = "none";
+    playAgainButton.style.borderRadius = "25px";
+    playAgainButton.style.padding = "15px 30px";
+    playAgainButton.style.fontSize = "1.2rem";
+    playAgainButton.style.cursor = "pointer";
+    playAgainButton.style.boxShadow = "0 4px 15px rgba(0, 243, 255, 0.3)";
+    playAgainButton.style.transition = "all 0.3s ease";
+
+    playAgainButton.addEventListener("click", () => {
         window.location.reload();
-    };
+    });
+
+    // Append elements to overlay
+    overlay.appendChild(gameOverText);
+    overlay.appendChild(winnerMessage);
+    overlay.appendChild(playAgainButton);
+
+    // Append overlay to body
+    document.body.appendChild(overlay);
 }
