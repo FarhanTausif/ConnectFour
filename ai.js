@@ -298,13 +298,20 @@ function aiMove() {
     }
 }
 
-function minimax(depth, alpha, beta, isMaximizing) {
+function minimax(depth, alpha, beta, isMaximizing, startTime, maxDuration) {
     let result = checkWinnerForMinimax();
     if (result !== null) {
         if (result === playerBrown) return 1000;
         if (result === playerRed) return -1000;
         return 0; // Draw
     }
+
+    // Early stopping mechanism based on time limit
+    const currentTime = Date.now();
+    if (currentTime - startTime >= maxDuration) {
+        return evaluateBoard();
+    }
+
     if (depth === 0) {
         return evaluateBoard();
     }
