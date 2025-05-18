@@ -234,13 +234,19 @@ function aiMove() {
     let bestScore = -Infinity;
     let bestCol = -1;
     let depth;
-    // Set depth based on difficulty
+    let maxDuration;
+    const startTime = Date.now();
+
+    // Set depth and maxDuration based on difficulty
     if (aiDifficulty === "easy") {
         depth = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
+        maxDuration = 500;
     } else if (aiDifficulty === "medium") {
         depth = Math.floor(Math.random() * 2) + 4; // 4 or 5
+        maxDuration = 1000;
     } else { // hard
         depth = Math.floor(Math.random() * 2) + 6; // 6 or 7
+        maxDuration = 2000;
     }
 
     // Check for immediate winning move
@@ -274,7 +280,7 @@ function aiMove() {
             let r = currColumns[c];
             board[r][c] = playerBrown;
             currColumns[c]--;
-            let score = minimax(depth - 1, -Infinity, Infinity, false);
+            let score = minimax(depth - 1, -Infinity, Infinity, false, startTime, maxDuration);
             board[r][c] = ' ';
             currColumns[c]++;
             if (score > bestScore) {
