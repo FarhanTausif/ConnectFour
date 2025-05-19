@@ -213,12 +213,19 @@ function aiMove() {
     let bestScore = -Infinity;
     let bestCol = -1;
     let depth;
+    let maxDuration;
+    const startTime = Date.now();
+
+    // Set depth and maxDuration based on difficulty
     if (aiDifficulty === "easy") {
         depth = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
+        maxDuration = 500;
     } else if (aiDifficulty === "medium") {
         depth = Math.floor(Math.random() * 2) + 4; // 4 or 5
-    } else {
+        maxDuration = 1000;
+    } else { // hard
         depth = Math.floor(Math.random() * 2) + 6; // 6 or 7
+        maxDuration = 2000;
     }
     for (let c = 0; c < columns; c++) {
         if (currColumns[c] >= 0) {
@@ -248,7 +255,7 @@ function aiMove() {
             let r = currColumns[c];
             board[r][c] = playerBrown;
             currColumns[c]--;
-            let score = minimax(depth - 1, -Infinity, Infinity, false);
+            let score = minimax(depth - 1, -Infinity, Infinity, false, startTime, maxDuration);
             board[r][c] = ' ';
             currColumns[c]++;
             if (score > bestScore) {
@@ -336,12 +343,12 @@ function aiMove() {
 //     }
 // }
 
-function minimax(depth, alpha, beta, isMaximizing) {
-    let result = checkWinner(true);
+function minimax(depth, alpha, beta, isMaximizing, startTime, maxDuration) {
+    let result = checkWinnerForMinimax();
     if (result !== null) {
         if (result === playerBrown) return 1000;
         if (result === playerRed) return -1000;
-        return 0;
+        return 0; // Draw
     }
     if (depth === 0) {
         return evaluateBoard();
