@@ -172,7 +172,7 @@ body {
 /* Add a vertical Connect 4 label */
 #vertical-label {
     position: absolute;
-    top: 50%;
+    top: 40%;
     left: -50px;
     transform: translateY(-50%) rotate(-90deg);
     font-size: 3rem;
@@ -190,4 +190,17 @@ body {
 /* Show the vertical label when the game starts */
 #vertical-label.show {
     opacity: 1;
+}
+
+#ai-timer {
+    position: absolute;
+    top: 360px;
+    right: 60px;
+    color: #00f3ff;
+    font-size: 1.3rem;
+    font-weight: bold;
+    min-width: 180px;
+    text-align: right;
+    z-index: 100;
+    pointer-events: none;
 }
