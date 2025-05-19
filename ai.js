@@ -231,6 +231,9 @@ function setPiece() {
 function aiMove() {
     if (gameOver) return;
 
+    const aiTimerDiv = document.getElementById("ai-timer");
+    if (aiTimerDiv) aiTimerDiv.innerText = "AI is thinking...";
+
     let bestScore = -Infinity;
     let bestCol = -1;
     let depth;
@@ -268,12 +271,16 @@ function aiMove() {
                 currPlayer = playerRed;
                 checkWinner();
                 updateTurnDisplay();
+                if (aiTimerDiv) aiTimerDiv.innerText = "AI Move Time: < 0.01 s";
                 return;
             }
             board[r][c] = ' ';
             currColumns[c]++;
         }
     }
+
+    // Start timing
+    const aiStart = performance.now();
 
     for (let c = 0; c < columns; c++) {
         if (currColumns[c] >= 0) {
@@ -289,6 +296,10 @@ function aiMove() {
             }
         }
     }
+
+    const aiEnd = performance.now();
+    const elapsed = ((aiEnd - aiStart) / 1000).toFixed(2);
+    if (aiTimerDiv) aiTimerDiv.innerText = `AI Move Time: ${elapsed} s`;
 
     if (bestCol !== -1) {
         let r = currColumns[bestCol];
@@ -329,7 +340,7 @@ function minimax(depth, alpha, beta, isMaximizing, startTime, maxDuration) {
                 let r = currColumns[c];
                 board[r][c] = playerBrown;
                 currColumns[c]--;
-                let eval = minimax(depth - 1, alpha, beta, false);
+                let eval = minimax(depth - 1, alpha, beta, false, startTime, maxDuration);
                 board[r][c] = ' ';
                 currColumns[c]++;
                 maxEval = Math.max(maxEval, eval);
@@ -543,8 +554,10 @@ function setWinner(r, c) {
     const gameOverSound = new Audio("../assets/game-over.mp3");
     gameOverSound.play();
 
-    // Show game-over pop-up
-    showGameOverPopup(winnerText);
+    // Show game-over pop-up after a short delay so the last move is visible
+    setTimeout(() => {
+        showGameOverPopup(winnerText);
+    }, 600); // 600ms delay for visual feedback
 }
 
 // Function to display the game-over pop-up
