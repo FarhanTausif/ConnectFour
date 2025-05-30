@@ -1,3 +1,4 @@
+// === Game Initialization ===
 var playerRed = "R";
 var playerBrown = "B";
 var currPlayer = playerBrown;
@@ -14,21 +15,66 @@ window.onload = function() {
     setupModeSelection();
     setGame();
     playBGM();
-
     const verticalLabel = document.getElementById("vertical-label");
     if (verticalLabel) {
         verticalLabel.classList.add("show");
     }
-
     updateTurnDisplay(); // Initialize the turn display
 }
 
+function setGame() {
+    board = [];
+    currColumns = [5, 5, 5, 5, 5, 5, 5];
+    for (let r = 0; r < rows; r++) {
+        let row = [];
+        for (let c = 0; c < columns; c++) {
+            row.push(' ');
+            let tile = document.createElement("div");
+            tile.id = r.toString() + "-" + c.toString();
+            tile.classList.add("tile");
+            tile.addEventListener("click", setPiece);
+            let boardDiv = document.getElementById("board");
+            if (!boardDiv) {
+                console.error("Board element not found!");
+                return;
+            }
+            boardDiv.append(tile); 
+        }
+        board.push(row);
+    }
+}
+
+function resetGame() {
+    console.log("Resetting game...");
+    let boardDiv = document.getElementById("board");
+    if (boardDiv) {
+        boardDiv.innerHTML = "";
+    } else {
+        console.error("Board element not found during reset!");
+    }
+    document.getElementById("winner").innerText = "";
+    gameOver = false;
+    // Randomize first player in AI mode
+    if (gameMode === "ai") {
+        currPlayer = Math.random() < 0.5 ? playerRed : playerBrown;
+    } else {
+        currPlayer = playerBrown;
+    }
+    setGame();
+    updateTurnDisplay(); // Ensure the turn display is correct after setting up the game
+    // If AI goes first, make its move
+    if (gameMode === "ai" && currPlayer === playerBrown && !gameOver) {
+        aiMove();
+    }
+}
+
+// === User Interface Setup ===
 function setupModeSelection() {
     let modeDiv = document.createElement("div");
     modeDiv.id = "mode-selection";
     modeDiv.style.textAlign = "center";
     modeDiv.style.marginBottom = "10px";
-
+    
     let humanBtn = document.createElement("button");
     humanBtn.innerText = "Human vs Human";
     humanBtn.classList.add("human-button");
@@ -131,53 +177,6 @@ function showDifficultyPopup() {
     document.body.appendChild(overlay);
 }
 
-function resetGame() {
-    console.log("Resetting game...");
-    let boardDiv = document.getElementById("board");
-    if (boardDiv) {
-        boardDiv.innerHTML = "";
-    } else {
-        console.error("Board element not found during reset!");
-    }
-    document.getElementById("winner").innerText = "";
-    gameOver = false;
-    // Randomize first player in AI mode
-    if (gameMode === "ai") {
-        currPlayer = Math.random() < 0.5 ? playerRed : playerBrown;
-    } else {
-        currPlayer = playerBrown;
-    }
-    setGame();
-    updateTurnDisplay(); // Ensure the turn display is correct after setting up the game
-    // If AI goes first, make its move
-    if (gameMode === "ai" && currPlayer === playerBrown && !gameOver) {
-        aiMove();
-    }
-}
-
-function setGame() {
-    board = [];
-    currColumns = [5, 5, 5, 5, 5, 5, 5];
-    
-    for (let r = 0; r < rows; r++) {
-        let row = [];
-        for (let c = 0; c < columns; c++) {
-            row.push(' ');
-            let tile = document.createElement("div");
-            tile.id = r.toString() + "-" + c.toString();
-            tile.classList.add("tile");
-            tile.addEventListener("click", setPiece);
-            let boardDiv = document.getElementById("board");
-            if (!boardDiv) {
-                console.error("Board element not found!");
-                return;
-            }
-            boardDiv.append(tile); 
-        }
-        board.push(row);
-    }
-}
-
 function updateTurnDisplay() {
     const winnerElement = document.getElementById("winner");
     if (!winnerElement) {
@@ -192,6 +191,7 @@ function updateTurnDisplay() {
     }
 }
 
+// === Gameplay Mechanics ===
 function setPiece() {
     if (gameOver) return;
 
@@ -228,6 +228,7 @@ function setPiece() {
     }
 }
 
+// === AI Logic ===
 function aiMove() {
     if (gameOver) return;
 
@@ -258,7 +259,7 @@ function aiMove() {
             let r = currColumns[c];
             board[r][c] = playerBrown;
             currColumns[c]--;
-            if (checkWinnerForMinimax() === playerBrown) {
+            if (checkWinner(true) === playerBrown) {
                 // Take the winning move immediately
                 board[r][c] = ' ';
                 currColumns[c]++;
@@ -316,7 +317,7 @@ function aiMove() {
 }
 
 function minimax(depth, alpha, beta, isMaximizing, startTime, maxDuration) {
-    let result = checkWinnerForMinimax();
+    let result = checkWinner(true);
     if (result !== null) {
         if (result === playerBrown) return 1000;
         if (result === playerRed) return -1000;
@@ -340,11 +341,11 @@ function minimax(depth, alpha, beta, isMaximizing, startTime, maxDuration) {
                 let r = currColumns[c];
                 board[r][c] = playerBrown;
                 currColumns[c]--;
-                let eval = minimax(depth - 1, alpha, beta, false, startTime, maxDuration);
+                let evaluation = minimax(depth - 1, alpha, beta, false, startTime, maxDuration);
                 board[r][c] = ' ';
                 currColumns[c]++;
-                maxEval = Math.max(maxEval, eval);
-                alpha = Math.max(alpha, eval);
+                maxEval = Math.max(maxEval, evaluation);
+                alpha = Math.max(alpha, evaluation);
                 if (beta <= alpha) break;
             }
         }
@@ -356,11 +357,11 @@ function minimax(depth, alpha, beta, isMaximizing, startTime, maxDuration) {
                 let r = currColumns[c];
                 board[r][c] = playerRed;
                 currColumns[c]--;
-                let eval = minimax(depth - 1, alpha, beta, true);
+                let evaluation = minimax(depth - 1, alpha, beta, true);
                 board[r][c] = ' ';
                 currColumns[c]++;
-                minEval = Math.min(minEval, eval);
-                beta = Math.min(beta, eval);
+                minEval = Math.min(minEval, evaluation);
+                beta = Math.min(beta, evaluation);
                 if (beta <= alpha) break;
             }
         }
@@ -419,115 +420,65 @@ function evaluateBoard() {
     return score;
 }
 
-function checkWinner() {
-   
-    // Horizontal
+// === Win/Draw Detection ===
+function checkWinner(isForMinimax = false) {
+    //Horizontal Checking
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < columns - 3; c++) {
             if (board[r][c] != ' ') {
                 if (board[r][c] == board[r][c+1] && board[r][c+1] == board[r][c+2] && board[r][c+2] == board[r][c+3]) {
+                    if (isForMinimax) return board[r][c];
                     setWinner(r, c);
                     return;
                 }
             }
         }
     }
-
-    // Vertical
+    //Vertical Checking
     for (let c = 0; c < columns; c++) {
         for (let r = 0; r < rows - 3; r++) {
             if (board[r][c] != ' ') {
                 if (board[r][c] == board[r+1][c] && board[r+1][c] == board[r+2][c] && board[r+2][c] == board[r+3][c]) {
+                    if (isForMinimax) return board[r][c];
                     setWinner(r, c);
                     return;
                 }
             }
         }
     }
-
-    // Diagonal (bottom-left to top-right)
+    //Diagonal Checking
     for (let r = 0; r < rows - 3; r++) {
         for (let c = 0; c < columns - 3; c++) {
             if (board[r][c] != ' ') {
                 if (board[r][c] == board[r+1][c+1] && board[r+1][c+1] == board[r+2][c+2] && board[r+2][c+2] == board[r+3][c+3]) {
+                    if (isForMinimax) return board[r][c];
                     setWinner(r, c);
                     return;
                 }
             }
         }
     }
-
-    // Anti-diagonal (top-left to bottom-right)
+    //Anti-Diagonal Checking
     for (let r = 3; r < rows; r++) {
         for (let c = 0; c < columns - 3; c++) {
             if (board[r][c] != ' ') {
                 if (board[r][c] == board[r-1][c+1] && board[r-1][c+1] == board[r-2][c+2] && board[r-2][c+2] == board[r-3][c+3]) {
+                    if (isForMinimax) return board[r][c];
                     setWinner(r, c);
                     return;
                 }
             }
         }
     }
-
-    // Check for draw
     if (currColumns.every(col => col < 0)) {
+        if (isForMinimax) return 'draw';
         setWinner(0, 0);
+        return;
     }
+    if (isForMinimax) return null;
 }
 
-function checkWinnerForMinimax() {
-    // Horizontal
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < columns - 3; c++) {
-            if (board[r][c] != ' ') {
-                if (board[r][c] == board[r][c+1] && board[r][c+1] == board[r][c+2] && board[r][c+2] == board[r][c+3]) {
-                    return board[r][c];
-                }
-            }
-        }
-    }
-
-    // Vertical
-    for (let c = 0; c < columns; c++) {
-        for (let r = 0; r < rows - 3; r++) {
-            if (board[r][c] != ' ') {
-                if (board[r][c] == board[r+1][c] && board[r+1][c] == board[r+2][c] && board[r+2][c] == board[r+3][c]) {
-                    return board[r][c];
-                }
-            }
-        }
-    }
-
-    // Diagonal
-    for (let r = 0; r < rows - 3; r++) {
-        for (let c = 0; c < columns - 3; c++) {
-            if (board[r][c] != ' ') {
-                if (board[r][c] == board[r+1][c+1] && board[r+1][c+1] == board[r+2][c+2] && board[r+2][c+2] == board[r+3][c+3]) {
-                    return board[r][c];
-                }
-            }
-        }
-    }
-
-    // Anti-diagonal
-    for (let r = 3; r < rows; r++) {
-        for (let c = 0; c < columns - 3; c++) {
-            if (board[r][c] != ' ') {
-                if (board[r][c] == board[r-1][c+1] && board[r-1][c+1] == board[r-2][c+2] && board[r-2][c+2] == board[r-3][c+3]) {
-                    return board[r][c];
-                }
-            }
-        }
-    }
-
-    // Draw
-    if (currColumns.every(col => col < 0)) {
-        return 'draw';
-    }
-
-    return null;
-}
-
+// === Game Over Handling ===
 function setWinner(r, c) {
     let winnerText = "";
 
@@ -536,6 +487,8 @@ function setWinner(r, c) {
         winnerText = "It's a Draw!";
     } else if (gameMode === "ai" && board[r][c] == playerBrown) {
         winnerText = "AI Wins!";
+    } else if (gameMode === "ai" && board[r][c] == playerRed) {
+        winnerText = "You Win!";
     } else if (board[r][c] == playerRed) {
         winnerText = "Maroon Wins!";
     } else if (board[r][c] == playerBrown) {
